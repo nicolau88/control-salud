@@ -1,0 +1,21 @@
+{
+  "spreadsheetId": "",
+  "spreadsheetUrl": "",
+  "syncedAt": "",
+  "diario": [],
+  "seriesGym": [],
+  "actividadFisica": [],
+  "rutinaPlan": [],
+  "config": {
+    "kcal_objetivo": "2200",
+    "proteinas_objetivo_g": "160",
+    "carbos_objetivo_g": "230",
+    "grasas_objetivo_g": "70",
+    "peso_objetivo_kg": "74.0",
+    "pasos_objetivo": "8000",
+    "etapa_activa": "2026-Actual",
+    "sesion_a_nombre": "Día 1 · Fuerza Base",
+    "sesion_b_nombre": "Día 2 · Tracción & Empuje",
+    "sesion_c_nombre": "Día 3 · Unilateral & Accesorios"
+  }
+}

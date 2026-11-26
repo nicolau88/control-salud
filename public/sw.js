@@ -1,4 +1,4 @@
-const CACHE_NAME = 'control-salud-v4';
+const CACHE_NAME = 'control-salud-v5';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {

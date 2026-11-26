@@ -61,9 +61,9 @@ export const HoyView: React.FC<HoyViewProps> = ({
   );
 
   const [peso, setPeso] = useState('');
-  const [creatina, setCreatina] = useState(true);
-  const [pasos, setPasos] = useState('');
   const [kcal, setKcal] = useState('');
+  const [pasos, setPasos] = useState('');
+  const [creatina, setCreatina] = useState(false);
   const [proteinas, setProteinas] = useState('');
   const [carbos, setCarbos] = useState('');
   const [grasas, setGrasas] = useState('');
@@ -73,9 +73,9 @@ export const HoyView: React.FC<HoyViewProps> = ({
 
   useEffect(() => {
     setPeso(existingRow?.Peso_Kg ?? '');
-    setCreatina(existingRow ? existingRow.Creatina?.toUpperCase() === 'SI' : true);
-    setPasos(existingRow?.Pasos ?? '');
     setKcal(existingRow?.Kcal ?? '');
+    setPasos(existingRow?.Pasos ?? '');
+    setCreatina(existingRow?.Creatina?.toUpperCase() === 'SI');
     setProteinas(existingRow?.Proteinas_g ?? '');
     setCarbos(existingRow?.Carbos_g ?? '');
     setGrasas(existingRow?.Grasas_g ?? '');
@@ -147,32 +147,44 @@ export const HoyView: React.FC<HoyViewProps> = ({
     return total > 0 ? total : null;
   }, [proteinas, carbos, grasas]);
 
-  const buildPayload = (): DiarioRow => ({
-    Fecha: selectedDate,
-    Etapa: stageForDate(selectedDate),
-    Peso_Kg: peso.trim().replace(',', '.'),
-    Kcal: kcal.trim().replace(',', '.'),
-    Proteinas_g: proteinas.trim().replace(',', '.'),
-    Carbos_g: carbos.trim().replace(',', '.'),
-    Grasas_g: grasas.trim().replace(',', '.'),
-    Creatina: creatina ? 'SI' : 'NO',
-    Suplementos_Extra: suplementosExtra.trim(),
-    Pasos: pasos.trim(),
-    Dolor_Rodilla_0_10: '',
-    Notas: notas.trim(),
-    Actualizado: new Date().toISOString()
-  });
-
   const handleMorningSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveDiario(buildPayload());
-    setSavedBanner('Registro matutino guardado.');
+    onSaveDiario({
+      Fecha: selectedDate,
+      Etapa: stageForDate(selectedDate),
+      Peso_Kg: peso.trim().replace(',', '.'),
+      Kcal: existingRow?.Kcal ?? kcal.trim().replace(',', '.'),
+      Proteinas_g: existingRow?.Proteinas_g ?? proteinas.trim().replace(',', '.'),
+      Carbos_g: existingRow?.Carbos_g ?? carbos.trim().replace(',', '.'),
+      Grasas_g: existingRow?.Grasas_g ?? grasas.trim().replace(',', '.'),
+      Creatina: existingRow?.Creatina ?? (creatina ? 'SI' : 'NO'),
+      Suplementos_Extra: existingRow?.Suplementos_Extra ?? suplementosExtra.trim(),
+      Pasos: existingRow?.Pasos ?? pasos.trim(),
+      Dolor_Rodilla_0_10: '',
+      Notas: existingRow?.Notas ?? notas.trim(),
+      Actualizado: new Date().toISOString()
+    });
+    setSavedBanner('Peso al despertar guardado.');
   };
 
   const handleEveningSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveDiario(buildPayload());
-    setSavedBanner('Cierre nocturno de calorías guardado.');
+    onSaveDiario({
+      Fecha: selectedDate,
+      Etapa: stageForDate(selectedDate),
+      Peso_Kg: peso.trim().replace(',', '.') || existingRow?.Peso_Kg || '',
+      Kcal: kcal.trim().replace(',', '.'),
+      Proteinas_g: proteinas.trim().replace(',', '.'),
+      Carbos_g: carbos.trim().replace(',', '.'),
+      Grasas_g: grasas.trim().replace(',', '.'),
+      Creatina: creatina ? 'SI' : 'NO',
+      Suplementos_Extra: suplementosExtra.trim(),
+      Pasos: pasos.trim(),
+      Dolor_Rodilla_0_10: '',
+      Notas: notas.trim(),
+      Actualizado: new Date().toISOString()
+    });
+    setSavedBanner('Cierre del día (calorías, pasos y creatina) guardado.');
   };
 
   return (
@@ -276,7 +288,6 @@ export const HoyView: React.FC<HoyViewProps> = ({
           })}
         </div>
 
-        {/* Accesos rápidos disponibles cualquier día de la semana */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button
             type="button"
@@ -308,69 +319,9 @@ export const HoyView: React.FC<HoyViewProps> = ({
         </div>
       )}
 
-      {/* Resumen semanal en vivo */}
-      <section aria-label="Métricas semanales en tiempo real" className="grid-stats">
-        <div className="stat-tile">
-          <span className="stat-label">Prom. Peso Semanal</span>
-          <span className="stat-value">
-            {currentWeekSummary?.promPeso ? `${formatNum(currentWeekSummary.promPeso, 2)} kg` : '—'}
-          </span>
-          <span className="stat-meta">
-            {currentWeekSummary?.deficitGramosSem !== null &&
-            currentWeekSummary?.deficitGramosSem !== undefined ? (
-              currentWeekSummary.deficitGramosSem >= 0 ? (
-                <span style={{ color: 'var(--brand)', fontWeight: 650 }}>
-                  ↓ {currentWeekSummary.deficitGramosSem} g vs sem. ant.
-                </span>
-              ) : (
-                <span style={{ color: 'var(--amber)', fontWeight: 650 }}>
-                  ↑ +{Math.abs(currentWeekSummary.deficitGramosSem)} g vs sem. ant.
-                </span>
-              )
-            ) : (
-              `${currentWeekSummary?.diasPesados ?? 0}/7 días pesados`
-            )}
-          </span>
-        </div>
-
-        <div className="stat-tile">
-          <span className="stat-label">Media Móvil 7 Días</span>
-          <span className="stat-value">
-            {latestMovingAvg?.mediaMovil7d
-              ? `${formatNum(latestMovingAvg.mediaMovil7d, 2)} kg`
-              : '—'}
-          </span>
-          <span className="stat-meta">
-            Meta etapa: {config.peso_objetivo_kg || '74.0'} kg
-          </span>
-        </div>
-
-        <div className="stat-tile">
-          <span className="stat-label">Prom. Kcal / Día</span>
-          <span className="stat-value">
-            {currentWeekSummary?.promKcal ? `${currentWeekSummary.promKcal} kcal` : '—'}
-          </span>
-          <span className="stat-meta">
-            Objetivo: {kcalGoal} kcal ({currentWeekSummary?.diasKcal ?? 0}/7 días)
-          </span>
-        </div>
-
-        <div className="stat-tile">
-          <span className="stat-label">TDEE Real Estimado</span>
-          <span className="stat-value">
-            {smoothedTdee.tdee ? `${smoothedTdee.tdee} kcal` : 'En calibración'}
-          </span>
-          <span className="stat-meta">
-            {smoothedTdee.tdee
-              ? `Base ${smoothedTdee.weeksUsed} sem. (${formatNum(smoothedTdee.avgWeeklyDeltaKg, 2)} kg/sem)`
-              : 'Requiere ≥2 semanas seguidas'}
-          </span>
-        </div>
-      </section>
-
-      {/* Los 2 momentos del día: Mañana y Noche */}
+      {/* ARRIBA: Panel 1 (Al despertar) y Panel 2 (Cierre del día) */}
       <div className="grid-2">
-        {/* Tarjeta 1: Mañana */}
+        {/* Panel 1: Solo peso al despertar */}
         <form
           className="card"
           method="POST"
@@ -382,10 +333,10 @@ export const HoyView: React.FC<HoyViewProps> = ({
             <div>
               <h2 id="form-manana-title" className="card-title">
                 <Sun size={20} style={{ color: 'var(--amber)' }} aria-hidden="true" />
-                1. Al despertar (en ayunas)
+                1. Al despertar
               </h2>
               <p className="card-desc">
-                Después de ir al baño ·{' '}
+                En ayunas después de ir al baño ·{' '}
                 {yesterdayWeight !== null
                   ? `Ayer: ${formatNum(yesterdayWeight, 2)} kg`
                   : 'Cargá tu peso del día'}
@@ -405,55 +356,26 @@ export const HoyView: React.FC<HoyViewProps> = ({
               name="peso_kg"
               type="text"
               inputMode="decimal"
-              enterKeyHint="next"
+              enterKeyHint="done"
               placeholder="Ej. 76.15"
               value={peso}
               onChange={(e) => setPeso(e.target.value)}
               aria-describedby="peso-help"
               className="tabular"
-              style={{ fontSize: '1.25rem', fontWeight: 750 }}
+              style={{ fontSize: '1.35rem', fontWeight: 750 }}
             />
             <span id="peso-help" className="field-hint">
               Acepta punto o coma decimal (ej. 76.15 o 76,15).
             </span>
           </div>
 
-          <div className="field">
-            <label htmlFor="input-pasos">Pasos del día (opcional)</label>
-            <input
-              id="input-pasos"
-              name="pasos"
-              type="text"
-              inputMode="numeric"
-              enterKeyHint="done"
-              placeholder={`Meta ${config.pasos_objetivo || '8000'}`}
-              value={pasos}
-              onChange={(e) => setPasos(e.target.value)}
-              className="tabular"
-            />
-          </div>
-
-          <div>
-            <label className="check-pill" htmlFor="check-creatina">
-              <input
-                id="check-creatina"
-                name="creatina"
-                type="checkbox"
-                className="brand-check"
-                checked={creatina}
-                onChange={(e) => setCreatina(e.target.checked)}
-              />
-              <span>Creatina monohidrato tomada hoy (5 g)</span>
-            </label>
-          </div>
-
           <button type="submit" className="btn btn-primary" style={{ marginTop: 'auto' }}>
             <Scale size={17} aria-hidden="true" />
-            Guardar registro de la mañana
+            Guardar peso al despertar
           </button>
         </form>
 
-        {/* Tarjeta 2: Noche */}
+        {/* Panel 2: Cierre del día (Calorías + Pasos + Creatina + Macros opc.) */}
         <form
           className="card"
           method="POST"
@@ -465,47 +387,80 @@ export const HoyView: React.FC<HoyViewProps> = ({
             <div>
               <h2 id="form-noche-title" className="card-title">
                 <Moon size={20} style={{ color: 'var(--blue)' }} aria-hidden="true" />
-                2. Cierre del día (noche)
+                2. Cierre del día
               </h2>
               <p className="card-desc">
                 Antes de acostarte · Meta diaria: {kcalGoal} kcal
               </p>
             </div>
-            {parseNum(existingRow?.Kcal) !== null && (
+            {(parseNum(existingRow?.Kcal) !== null || parseNum(existingRow?.Pasos) !== null) && (
               <span className="badge badge-blue">
                 <CheckCircle2 size={13} aria-hidden="true" /> Cargado
               </span>
             )}
           </div>
 
-          <div className="field">
-            <label htmlFor="input-kcal">Calorías totales consumidas (kcal)</label>
-            <input
-              id="input-kcal"
-              name="kcal"
-              type="text"
-              inputMode="numeric"
-              enterKeyHint="done"
-              placeholder={`Ej. ${kcalGoal}`}
-              value={kcal}
-              onChange={(e) => setKcal(e.target.value)}
-              aria-describedby="kcal-help"
-              className="tabular"
-              style={{ fontSize: '1.25rem', fontWeight: 750 }}
-            />
-            <span id="kcal-help" className="field-hint">
-              {kcalDiff !== null ? (
-                kcalDiff === 0 ? (
-                  'Clavado en tu objetivo diario.'
-                ) : kcalDiff < 0 ? (
-                  `${Math.abs(kcalDiff)} kcal por debajo de tu meta diaria (${kcalGoal} kcal).`
-                ) : (
-                  `+${kcalDiff} kcal por encima de tu meta diaria (${kcalGoal} kcal).`
-                )
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem' }}>
+            <div className="field">
+              <label htmlFor="input-kcal">Calorías del día (kcal)</label>
+              <input
+                id="input-kcal"
+                name="kcal"
+                type="text"
+                inputMode="numeric"
+                enterKeyHint="next"
+                placeholder={`Ej. ${kcalGoal}`}
+                value={kcal}
+                onChange={(e) => setKcal(e.target.value)}
+                aria-describedby="kcal-help"
+                className="tabular"
+                style={{ fontSize: '1.2rem', fontWeight: 750 }}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="input-pasos">Pasos del día</label>
+              <input
+                id="input-pasos"
+                name="pasos"
+                type="text"
+                inputMode="numeric"
+                enterKeyHint="done"
+                placeholder={`Meta ${config.pasos_objetivo || '8000'}`}
+                value={pasos}
+                onChange={(e) => setPasos(e.target.value)}
+                className="tabular"
+                style={{ fontSize: '1.2rem', fontWeight: 700 }}
+              />
+            </div>
+          </div>
+
+          <span id="kcal-help" className="field-hint" style={{ marginTop: '-0.4rem' }}>
+            {kcalDiff !== null ? (
+              kcalDiff === 0 ? (
+                'Clavado en tu objetivo calórico diario.'
+              ) : kcalDiff < 0 ? (
+                `${Math.abs(kcalDiff)} kcal por debajo de tu meta diaria (${kcalGoal} kcal).`
               ) : (
-                'Ingresá el total energético cerrado del día.'
-              )}
-            </span>
+                `+${kcalDiff} kcal por encima de tu meta diaria (${kcalGoal} kcal).`
+              )
+            ) : (
+              'Ingresá tus calorías totales y los pasos realizados hoy.'
+            )}
+          </span>
+
+          <div>
+            <label className="check-pill" htmlFor="check-creatina">
+              <input
+                id="check-creatina"
+                name="creatina"
+                type="checkbox"
+                className="brand-check"
+                checked={creatina}
+                onChange={(e) => setCreatina(e.target.checked)}
+              />
+              <span>Tomé la creatina hoy (5 g)</span>
+            </label>
           </div>
 
           <details className="card-elevated">
@@ -593,10 +548,70 @@ export const HoyView: React.FC<HoyViewProps> = ({
 
           <button type="submit" className="btn btn-primary" style={{ marginTop: 'auto' }}>
             <Flame size={17} aria-hidden="true" />
-            Guardar cierre nocturno
+            Guardar cierre del día
           </button>
         </form>
       </div>
+
+      {/* ABAJO: Resumen semanal en vivo (Kg, Media 7d, Prom Kcal y TDEE) */}
+      <section aria-label="Métricas semanales en tiempo real" className="grid-stats">
+        <div className="stat-tile">
+          <span className="stat-label">Prom. Peso Semanal</span>
+          <span className="stat-value">
+            {currentWeekSummary?.promPeso ? `${formatNum(currentWeekSummary.promPeso, 2)} kg` : '—'}
+          </span>
+          <span className="stat-meta">
+            {currentWeekSummary?.deficitGramosSem !== null &&
+            currentWeekSummary?.deficitGramosSem !== undefined ? (
+              currentWeekSummary.deficitGramosSem >= 0 ? (
+                <span style={{ color: 'var(--brand)', fontWeight: 650 }}>
+                  ↓ {currentWeekSummary.deficitGramosSem} g vs sem. ant.
+                </span>
+              ) : (
+                <span style={{ color: 'var(--amber)', fontWeight: 650 }}>
+                  ↑ +{Math.abs(currentWeekSummary.deficitGramosSem)} g vs sem. ant.
+                </span>
+              )
+            ) : (
+              `${currentWeekSummary?.diasPesados ?? 0}/7 días pesados`
+            )}
+          </span>
+        </div>
+
+        <div className="stat-tile">
+          <span className="stat-label">Media Móvil 7 Días</span>
+          <span className="stat-value">
+            {latestMovingAvg?.mediaMovil7d
+              ? `${formatNum(latestMovingAvg.mediaMovil7d, 2)} kg`
+              : '—'}
+          </span>
+          <span className="stat-meta">
+            Meta etapa: {config.peso_objetivo_kg || '74.0'} kg
+          </span>
+        </div>
+
+        <div className="stat-tile">
+          <span className="stat-label">Prom. Kcal / Día</span>
+          <span className="stat-value">
+            {currentWeekSummary?.promKcal ? `${currentWeekSummary.promKcal} kcal` : '—'}
+          </span>
+          <span className="stat-meta">
+            Objetivo: {kcalGoal} kcal ({currentWeekSummary?.diasKcal ?? 0}/7 días)
+          </span>
+        </div>
+
+        <div className="stat-tile">
+          <span className="stat-label">TDEE Real Estimado</span>
+          <span className="stat-value">
+            {smoothedTdee.tdee ? `${smoothedTdee.tdee} kcal` : 'En calibración'}
+          </span>
+          <span className="stat-meta">
+            {smoothedTdee.tdee
+              ? `Base ${smoothedTdee.weeksUsed} sem. (${formatNum(smoothedTdee.avgWeeklyDeltaKg, 2)} kg/sem)`
+              : 'Requiere ≥2 semanas seguidas'}
+          </span>
+        </div>
+      </section>
     </div>
   );
 };
